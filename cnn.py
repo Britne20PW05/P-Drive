@@ -1,3 +1,6 @@
+# with confusion matrix(table as well as plot)
+
+
 import os
 import librosa
 import numpy as np
@@ -10,9 +13,13 @@ from sklearn.metrics import confusion_matrix as sklearn_confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Function to extract MFCC features
-def extract_mfcc(audio_file_path, num_mfcc=44):
+# Function to extract MFCC features with time stretching
+def extract_mfcc(audio_file_path, num_mfcc=44, time_stretch_rate=None):
     audio_data, sample_rate = librosa.load(audio_file_path, sr=None, duration=4.00, res_type='kaiser_fast')
+    if time_stretch_rate is not None:
+        # Resample the audio data to the desired sample rate
+        desired_sample_rate = 44100
+        audio_data = librosa.effects.time_stretch(audio_data, rate=time_stretch_rate)
     mfccs = librosa.feature.mfcc(y=audio_data, sr=sample_rate, n_mfcc=num_mfcc)
     return mfccs
 
@@ -88,14 +95,14 @@ train_generator = data_generator(train_paths, train_labels, batch_size, num_mfcc
 test_generator = data_generator(test_paths, test_labels, batch_size, num_mfcc, max_length)
 
 # Define the number of classes
-num_classes = len(class_mapping)  # 13
+num_classes = len(class_mapping)  # 16
 
 # Check if the saved model exists
 if os.path.exists('trained_model.h5'):
     # Load the saved model
     loaded_model = tf.keras.models.load_model('trained_model.h5')
 else:
-    # Create the CNN model with 7 convolutional layers
+    # Create the CNN model
     model = models.Sequential()
     model.add(layers.Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=(max_length, num_mfcc, 1)))
     model.add(layers.MaxPooling2D((2, 2)))
@@ -103,14 +110,8 @@ else:
     model.add(layers.MaxPooling2D((2, 2)))
     model.add(layers.Conv2D(128, (3, 3), activation='relu', padding='same'))
     model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Conv2D(256, (3, 3), activation='relu', padding='same'))
-    model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Conv2D(512, (3, 3), activation='relu', padding='same'))
-    model.add(layers.MaxPooling2D((2, 2)))
-    model.add(layers.Conv2D(512, (3, 3), activation='relu', padding='same'))
-    model.add(layers.MaxPooling2D((2, 2)))
     model.add(layers.Flatten())
-    model.add(layers.Dense(512, activation='relu'))
+    model.add(layers.Dense(128, activation='relu'))
     model.add(layers.Dense(num_classes, activation='softmax'))
 
     # Compile the model
@@ -155,9 +156,64 @@ for batch in test_generator:
 test_predictions = np.array(test_predictions)
 test_labels = np.array(test_labels)
 
-# Compute the confusion matrix
+#Compute the confusion matrix
 confusion_matrix = metrics.confusion_matrix(test_labels, test_predictions)
 
 # Print the confusion matrix
 print("Confusion Matrix:")
 print(confusion_matrix)
+# Compute the confusion matrix
+confusion_matrix = metrics.confusion_matrix(test_labels, test_predictions)
+
+# Get the class names
+class_names = list(class_mapping.keys()) #26
+#Print the confusion matrix with class names
+print("Confusion Matrix:")
+print("\t", "\t".join(class_names))
+for i in range(len(class_names)):
+    row = "\t".join(str(confusion_matrix[i, j]) for j in range(len(class_names)))
+    print(f"{class_names[i]}\t{row}")
+
+# Define a reverse mapping for class labels to class names
+class_mapping_inv = {v: k for k, v in class_mapping.items()}
+#
+#Compute the original confusion matrix
+confusion_mat = sklearn_confusion_matrix(test_labels, test_predictions, labels=np.arange(num_classes))
+#
+# Print the class names for labeling the rows and columns
+class_names = [class_mapping_inv[i] for i in range(num_classes)]
+
+# Print the confusion matrix using tabulate
+confusion_table = tabulate(confusion_mat, headers=class_names, showindex=class_names, tablefmt='pretty')
+print("Confusion Matrix:")
+print(confusion_table)
+
+# Plot the original confusion matrix using Seaborn and Matplotlib
+plt.figure(figsize=(10, 8))
+sns.set(font_scale=1)
+sns.heatmap(confusion_mat, annot=True, cmap="Blues", fmt="d", xticklabels=class_names, yticklabels=class_names)
+plt.xlabel("Predicted Labels")
+plt.ylabel("True Labels")
+plt.title("Original Confusion Matrix")
+plt.show()
+
+#grouped_classes = {
+#    0: [0, 1, 2, 3, 4, 5],
+#    1: [6, 7, 8, 9, 10, 11],
+#    2: [12, 13, 14, 15, 16, 17],
+#    3: [18, 19, 20, 21, 22, 23, 24, 25]
+#}
+#
+## Initialize the 4x4 aggregated confusion matrix
+#aggregated_confusion_matrix = np.zeros((4, 4), dtype=int)
+
+## Aggregate the values from the original confusion matrix
+#for true_group, class_list in grouped_classes.items():
+#    for predicted_group, _ in grouped_classes.items():
+#        for true_class in class_list:
+#            for predicted_class in class_list:
+#                aggregated_confusion_matrix[true_group, predicted_group] += confusion_mat[true_class, predicted_class]
+
+## Print the aggregated confusion matrix
+#print("Aggregated Confusion Matrix (4x4):")
+#print(aggregated_confusion_matrix)
