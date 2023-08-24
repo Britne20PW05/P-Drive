@@ -1,3 +1,5 @@
+#cnn
+
 import os
 import librosa
 import numpy as np
@@ -186,5 +188,35 @@ sns.set(font_scale=1)
 sns.heatmap(confusion_mat, annot=True, cmap="Blues", fmt="d", xticklabels=class_names, yticklabels=class_names)
 plt.xlabel("Predicted Labels")
 plt.ylabel("True Labels")
+
+--------------------*-----------------------------------------*-----------------------------------------------
+
+#trim
+
+from pydub import AudioSegment
+import os
+
+input_folder = "input/fold10"
+output_folder = "input/folder10"
+
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+
+desired_duration_ms = 1000
+
+for filename in os.listdir(input_folder):
+    if filename.endswith(".wav"):
+        file_path = os.path.join(input_folder, filename)
+
+        audio = AudioSegment.from_wav(file_path)
+
+        audio = audio[:desired_duration_ms]
+
+        # Save the one-second audio to the output folder
+        output_path = os.path.join(output_folder, filename)
+        audio.export(output_path, format="wav")
+
+print("Conversion completed.")
+
 plt.title("Original Confusion Matrix")
 plt.show()
