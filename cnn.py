@@ -191,6 +191,49 @@ plt.ylabel("True Labels")
 
 --------------------*-----------------------------------------*-----------------------------------------------
 
+#record
+
+import pyaudio
+import numpy as np
+
+sample_rate = 44100  # Sample rate (samples per second)
+chunk_size = 1024  # Size of each audio chunk (number of frames per buffer)
+
+# Initialize PyAudio
+p = pyaudio.PyAudio()
+for i in range(p.get_device_count()):
+    info = p.get_device_info_by_index(i)
+    print(f"Device {i}: {info['name']}")
+
+# Open a streaming stream
+stream = p.open(format=pyaudio.paInt16,
+                channels=1,
+                rate=sample_rate,
+                input=True,
+                frames_per_buffer=chunk_size,
+                input_device_index=YOUR_MICROPHONE_INDEX)
+
+print("Recording...")
+try:
+    while True:
+        # Read audio data from the stream
+        audio_data = stream.read(chunk_size)
+
+        audio_array = np.frombuffer(audio_data, dtype=np.int16)
+        max_amplitude = np.max(np.abs(audio_array))
+        print(f"Max Amplitude: {max_amplitude}")
+except KeyboardInterrupt:
+    pass
+
+print("Recording stopped.")
+
+# Close the audio stream and terminate PyAudio
+stream.stop_stream()
+stream.close()
+p.terminate()
+
+--------------------*-----------------------------------------*-----------------------------------------------
+
 #trim
 
 from pydub import AudioSegment
